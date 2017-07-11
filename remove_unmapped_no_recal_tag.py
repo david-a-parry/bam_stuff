@@ -27,8 +27,8 @@ Optionally, a filename for filtered reads can be
 given as the third argument.
 
 The functionality of this script is superceded by
-the identify_dups.py script, but this script may
-be useful for checking/testing.
+the filter_in_silico_dups.py script, but this 
+script may be useful for checking/testing.
 '''
     sys.exit(msg)
 
