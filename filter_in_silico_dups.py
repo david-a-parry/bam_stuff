@@ -54,12 +54,13 @@ def get_duplicates(read, cache):
 
 def is_dup(read, other):
     # cache key is query_name so we know read.query_name == other.query_name
-    return (read.flag == other.flag)
-    #return (read.flag == other.flag and 
-    #    read.reference_start == other.reference_start and 
-    #    read.seq == other.seq)
-        # not quite exhaustive, but surely have to be duplicates if 
-        # all these are true. Maybe just name and Flag is enough?
+    if read.flag == other.flag:
+        if read.is_secondary or read.is_supplementary:
+            return (read.reference_start == other.reference_start and 
+                    read.cigarstring == other.cigarstring)
+        else:
+            return True
+    return False
 
 def filter_dups(bam, output=None, dup_bam=None, ref=None, buffer_size=500):
     for fn in (output, dup_bam):
