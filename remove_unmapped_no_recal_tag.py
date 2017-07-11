@@ -8,13 +8,6 @@ from lib.file_stuff import get_bamfile, get_output
 def no_recal_tag(read):
     return not (read.has_tag('BD') or read.has_tag('BI'))
 
-def get_coordinate(read):
-    if read.reference_id >= 0:
-        coord = "{}:{:,}".format(read.reference_name, read.reference_start)
-    else:
-        coord = "*/*"
-    return coord
-
 def usage():
 
     msg = "Usage: {} input.bam output.bam [dups.bam]".format(sys.argv[0])
