@@ -4,7 +4,7 @@ import os
 import pysam
 import argparse
 from lib.read_stuff import get_coordinate
-from lib.file_stuff import get_bamfile, get_output
+from lib.file_stuff import get_bamfile, get_output, seek_back_til_reads
 
 def get_parser():
     '''Get ArgumentParser'''
@@ -50,15 +50,8 @@ def extract(bam, output=None, ref=None):
     n = 0
     u = 0
     prog_string = ''
-    nref = bamfile.nreferences
-    sys.stderr.write("Seeking to last reference ({})"
-                     .format(bamfile.get_reference_name(nref -1)))
-    for read in bamfile.fetch(tid=nref-1):
-        n += 1
-        coord = get_coordinate(read)
-        if not n % 1000:
-            sys.stderr.write("\r{:,} records read, at {}".format(n, coord))
-    sys.stderr.write("\nFile position should now be at unmapped pairs\n")
+    seek_back_til_reads(bamfile, ref=ref)
+    sys.stderr.write("File position should now be at unmapped pairs\n")
     for read in bamfile.fetch(until_eof=True):
         u += 1
         outfile.write(read)

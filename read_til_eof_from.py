@@ -3,7 +3,7 @@ import sys
 import os
 import pysam
 from lib.read_stuff import get_rname
-from lib.file_stuff import get_bamfile, get_output
+from lib.file_stuff import get_bamfile, get_output, seek_back_til_reads
 import argparse
 
 def get_parser():
@@ -45,23 +45,32 @@ def read_til_eof(bam, contig, output=None, ref=None):
     if tid < 0:
         sys.exit("Could not find contig '{}' in bam".format(contig))
     outfile = get_output(output, bamfile)
-    sys.stderr.write("Seeking to reference {}"
+    sys.stderr.write("Seeking to reference {}\n"
                      .format(bamfile.get_reference_name(tid)))
-    sys.stderr.write("\nAt contig {}".format(bamfile.get_reference_name(tid)))
+    got_some = 0
     for read in bamfile.fetch(tid=tid, reference=ref):
+        if not got_some:
+            sys.stderr.write("At contig {}\n"
+                             .format(bamfile.get_reference_name(tid)))
         outfile.write(read)
+        got_some += 1
+    if not got_some: 
+        sys.stderr.write("WARNING: No reads found for contig {}\n"
+                         .format(contig)) 
+        seek_back_til_reads(bamfile, start_tid=tid-1, ref=ref)
+        #if there are no reads at tid pos will still be at beginning of BAM
     #get remaining reads
     prev_rname = contig
     for read in bamfile.fetch(until_eof=True, reference=ref):
         rname = get_rname(read)
         if rname != prev_rname:
-            sys.stderr.write("\nAt contig " + rname)
+            sys.stderr.write("At contig " + rname + "\n")
             prev_rname = rname
         outfile.write(read)
-    sys.stderr.write("\nFinished\n")
+    sys.stderr.write("Finished\n")
     bamfile.close()
     outfile.close()
- 
+
 if __name__ == '__main__':
     parser = get_parser()
     args = parser.parse_args()
