@@ -8,9 +8,23 @@ from lib.file_stuff import get_bamfile, get_output
 def no_recal_tag(read):
     return not (read.has_tag('BD') or read.has_tag('BI'))
 
+def usage():
+        msg = "Usage: {} input.bam [ref.fa]" .format(sys.argv[0])
+        msg += '''
+
+Outputs number of mapped and unmapped reads with 
+and without the GATK base quality recalibration
+tags 'BD' or 'BI'.
+
+First argument must be the input BAM/SAM/CRAM 
+file. The optional second argument is a reference
+fasta file, which is required if using CRAM input.
+'''
+        sys.exit(msg)
+
 if __name__ == '__main__':
     if len(sys.argv) < 2 or len(sys.argv) > 3: 
-        sys.exit("Usage: {} input.bam [ref.fa]" .format(sys.argv[0]))
+        usage()
     bam = sys.argv[1]
     ref = None
     if len(sys.argv) > 2:
