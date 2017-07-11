@@ -3,6 +3,8 @@ import sys
 import os
 import pysam
 import argparse
+from lib.read_stuff import get_coordinate
+from lib.file_stuff import get_bamfile, get_output
 
 def get_parser():
     '''Get ArgumentParser'''
@@ -38,31 +40,6 @@ behaviour is to write SAM format to STDOUT.
                                help=
 '''Reference fasta file. Required if using CRAM input.''')
     return parser
-
-def get_coordinate(read):
-    if read.reference_id >= 0:
-        coord = "{}:{:,}".format(read.reference_name, read.reference_start)
-    else:
-        coord = "*/*"
-    return coord
-
-def get_bamfile(bam):
-    bmode = 'rb'
-    if bam.endswith(('.sam', '.SAM')):
-        bmode = 'r'
-    elif bam.endswith(('.cram', '.CRAM')):
-        bmode = 'rc'
-    return pysam.AlignmentFile(bam, bmode)
-
-def get_output(output, bamfile):
-    if output is not None:
-        wbmode = 'wb'
-        if output.endswith(('.sam', '.SAM')):
-            wbmode = 'w'
-        elif output.endswith(('.cram', '.CRAM')):
-            wbmode = 'wc'
-        return pysam.AlignmentFile(output, wbmode, template=bamfile)
-    return  pysam.AlignmentFile('-', "w", template=bamfile)
 
 def extract(bam, output=None, ref=None):
     if output is not None and os.path.exists(output):

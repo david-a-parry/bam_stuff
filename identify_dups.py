@@ -4,6 +4,8 @@ import os
 import pysam
 from collections import defaultdict,OrderedDict
 import argparse
+from lib.read_stuff import get_coordinate
+from lib.file_stuff import get_bamfile, get_output
 
 def get_parser():
     '''Get ArgumentParser'''
@@ -14,38 +16,34 @@ def get_parser():
                                     the same read ID and bitwise FLAG.''')
     required_args = parser.add_argument_group('Required Arguments')
     optional_args = parser.add_argument_group('Optional Arguments')
-    required_args.add_argument('-i', '--bam', '--input', required=True, 
-                               metavar='IN.bam', help='''Input BAM filename''')
-    required_args.add_argument('-o', '--output', metavar='OUT.bam', 
-                               required=True,
-                               help='''Write cleaned output BAM to this file. 
-                                    ''')
+    required_args.add_argument('bam', metavar='IN', 
+                               help=''' Input BAM filename''')
+    optional_args.add_argument('-o', '--output', metavar='OUT', 
+                               help=''' Write cleaned output BAM to this file. 
+                                        Default is to write SAM format to 
+                                        STDOUT''')
     optional_args.add_argument('-d', '--dup_bam', metavar='DUPS.bam', 
-                               help='''Optional BAM file for duplicated reads.
+                               help=''' Optional BAM file for duplicated reads.
                                ''')
     optional_args.add_argument('-r', '--ref', metavar='REF', 
-                               help='''Reference fasta file. Required if using
-                                       CRAM input.''')
+                               help=''' Reference fasta file. Required if using
+                                        CRAM input.''')
     optional_args.add_argument('-b', '--buffer_size', metavar='NUM_READS', 
                                type=int, default=500, 
-                               help='''Number of reads to store in memory to 
-                                       check as duplicates against the current 
-                                       read. Only the last N reads will be held
-                                       for comparison. Too few may mean that
-                                       duplicates are not detected while a 
-                                       large number will result in slower 
-                                       runtime and greater memory usage.
-                                       Default=500.''')
+                               help=''' Number of reads to store in memory to 
+                                        check as duplicates against the current 
+                                        read. Only the last N reads will be 
+                                        held for comparison. Too few may mean 
+                                        that duplicates are not detected while 
+                                        large number will result in slower 
+                                        runtime and greater memory usage. The 
+                                        ideal number will depend on depth of 
+                                        coverage (i.e. how many reads may 
+                                        have the same start coordinate), with 
+                                        the default setting being adequate for
+                                        30X coverage. Default=500.''')
     return parser
     
- 
-def get_coordinate(read):
-    if read.reference_id >= 0:
-        coord = "{}:{:,}".format(read.reference_name, read.reference_start)
-    else:
-        coord = "*/*"
-    return coord
-
 def get_duplicates(read, cache):
     dups = []
     if read.query_name in cache:
@@ -63,23 +61,18 @@ def is_dup(read, other):
         # not quite exhaustive, but surely have to be duplicates if 
         # all these are true. Maybe just name and Flag is enough?
 
-def filter_dups(bam, output, dup_bam=None, ref=None, buffer_size=500):
+def filter_dups(bam, output=None, dup_bam=None, ref=None, buffer_size=500):
     for fn in (output, dup_bam):
-        if os.path.exists(fn):
+        if fn is not None and os.path.exists(fn):
             sys.exit("Output file '{}' exists - please delete or choose"
                      .format(fn) + " another name.")
     if buffer_size < 1:
         sys.exit("--buffer_size must be greater than 0")
-    bmode = 'rb'
-    if bam.endswith(('.sam', '.SAM')):
-        bmode = 'r'
-    elif bam.endswith(('.cram', '.CRAM')):
-        bmode = 'rc'
-    bamfile = pysam.AlignmentFile(bam, bmode)
-    outfile = pysam.AlignmentFile(output, "wb", template=bamfile)
+    bamfile = get_bamfile(bam)
+    outfile = get_output(output, bamfile) 
     dupfile = None
     if dup_bam is not None:
-        dupfile = pysam.AlignmentFile(dup_bam, "wb", template=bamfile)
+        dupfile = get_output(dup_bam, bamfile)
     n = 0
     d = 0
     prog_string = ''

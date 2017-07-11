@@ -2,16 +2,11 @@
 import sys
 import os
 import pysam
+from lib.read_stuff import get_coordinate
+from lib.file_stuff import get_bamfile, get_output
 
 def no_recal_tag(read):
     return not (read.has_tag('BD') or read.has_tag('BI'))
-
-def get_coordinate(read):
-    if read.reference_id >= 0:
-        coord = "{}:{:,}".format(read.reference_name, read.reference_start)
-    else:
-        coord = "*/*"
-    return coord
 
 if __name__ == '__main__':
     if len(sys.argv) < 2 or len(sys.argv) > 3: 
@@ -21,12 +16,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 2:
         ref = sys.argv[2]
     filtered_reads = None
-    bmode = 'rb'
-    if bam.endswith(('.sam', '.SAM')):
-        bmode = 'r'
-    elif bam.endswith(('.cram', '.CRAM')):
-        bmode = 'rc'
-    bamfile = pysam.AlignmentFile(bam, bmode)
+    bamfile = get_bamfile(bam)
     n = 0
     supp = 0
     prog_string = ''
