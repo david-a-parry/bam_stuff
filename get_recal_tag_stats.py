@@ -19,6 +19,12 @@ tags 'BD' or 'BI'.
 First argument must be the input BAM/SAM/CRAM 
 file. The optional second argument is a reference
 fasta file, which is required if using CRAM input.
+
+The purpose of this script is to investigate BAM
+files that have gone through bcbio pipelines which
+result in not all reads having the expected BQSR
+tags.
+
 '''
         sys.exit(msg)
 
