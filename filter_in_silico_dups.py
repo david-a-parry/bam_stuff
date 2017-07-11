@@ -35,7 +35,7 @@ def get_parser():
                                         read. Only the last N reads will be 
                                         held for comparison. Too few may mean 
                                         that duplicates are not detected while 
-                                        large number will result in slower 
+                                        large number may result in slower 
                                         runtime and greater memory usage. The 
                                         ideal number will depend on depth of 
                                         coverage (i.e. how many reads may 
