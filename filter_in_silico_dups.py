@@ -90,7 +90,7 @@ def filter_dups(bam, output=None, dup_bam=None, ref=None, buffer_size=500):
         else:
             outfile.write(read)
         cache[read.query_name].append(read)
-        cache_keys[read.query_name] = 1
+        cache_keys[read.query_name] = None
         if len(cache_keys) > buffer_size:
             first = list(cache_keys)[0]
             del cache[first]
