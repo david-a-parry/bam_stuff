@@ -14,21 +14,19 @@ def get_parser():
 Extract unmapped reads from the end of a BAM file.''',
         epilog='''  
 
-    Read all unmapped reads (without a mapped mate) from a BAM file. 
+Read all unmapped reads (without a mapped mate) from a BAM file. 
 
-    While samtools will extract all reads for a given region/contig it
-    does not provide a way to seek to unmapped reads at the end of a 
-    file. This script provides a way to retrieve all unmapped reads from 
-    the end of a BAM file. Note, that if your reads are paired, this 
-    will not retrieve unmapped reads where the mate is mapped. That can
-    instead be acheived simply using samtools (for example:
-                                               samtools -f 4 input.bam) 
+While samtools will extract all reads for a given region/contig it does 
+not provide a way to seek to unmapped reads at the end of a  file. This
+script provides a way to retrieve all unmapped reads from the end of a 
+BAM file. Note, that if your reads are paired, this will not retrieve 
+unmapped reads where the mate is mapped. That can instead be acheived 
+simply using samtools (for example: samtools -f 4 input.bam).
 
 ''' )
     required_args = parser.add_argument_group('Required Arguments')
     optional_args = parser.add_argument_group('Optional Arguments')
-    required_args.add_argument('-i', '--bam', '--input', required=True, 
-                               metavar='IN', 
+    required_args.add_argument('bam', metavar='IN', 
                                help='''Input BAM filename''')
     optional_args.add_argument('-o', '--output', metavar='OUT', 
                                help=
