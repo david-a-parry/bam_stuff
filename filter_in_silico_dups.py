@@ -90,12 +90,12 @@ def filter_dups(bam, output=None, dup_bam=None, ref=None, buffer_size=500):
                 dupfile.write(read)
         else:
             outfile.write(read)
-        cache[read.query_name].append(read)
-        cache_keys[read.query_name] = None
-        if len(cache_keys) > buffer_size:
-            first = list(cache_keys)[0]
-            del cache[first]
-            del cache_keys[first]
+            cache[read.query_name].append(read)
+            cache_keys[read.query_name] = None
+            if len(cache_keys) > buffer_size:
+                first = list(cache_keys)[0]
+                del cache[first]
+                del cache_keys[first]
         if not n % 10000:
             coord = get_coordinate(read)
             sys.stderr.write("\r" + " " * len(prog_string))
