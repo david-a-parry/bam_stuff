@@ -10,13 +10,31 @@ from lib.file_stuff import get_bamfile, get_output
 def get_parser():
     '''Get ArgumentParser'''
     parser = argparse.ArgumentParser(
-                  description='''   Identify and filter erroneously duplicated 
-                                    reads from a BAM. Keeps only the first 
-                                    encountered read where more than one share 
-                                    the same read ID and bitwise FLAG.''')
+                    formatter_class=argparse.RawDescriptionHelpFormatter,
+                    usage='%(prog)s INPUT [options]',
+                    description=''' 
+Identify and filter erroneously duplicated reads from a BAM. Keeps only the 
+first encountered read where more than one share the same read ID and bitwise 
+FLAG.''',
+
+                    epilog='''
+
+A note on the program logic:
+    
+In theory, for all primary alignments the read IDs and bitwise flags should be
+unique, meaning we can filter duplicate reads using these features. For
+secondary or supplementary alignments bitwise flags need not be unique, so these
+alignments are only considered duplicates if POS and CIGAR fields are identical.
+
+Note, that for primary alignments, we cannnot consider unmapped reads with
+different POS values as necessarily distinct as this value may change if the
+mapped mate has undergone indel realignment. This means an arbitrary sized read
+buffer is necessary rather than just retaining reads mapped to the same
+coordinate in memory.''')
+
     required_args = parser.add_argument_group('Required Arguments')
     optional_args = parser.add_argument_group('Optional Arguments')
-    required_args.add_argument('bam', metavar='IN', 
+    required_args.add_argument('bam', metavar='INPUT', 
                                help=''' Input BAM filename''')
     optional_args.add_argument('-o', '--output', metavar='OUT', 
                                help=''' Write cleaned output BAM to this file. 
