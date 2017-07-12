@@ -80,6 +80,16 @@ def is_dup(read, other):
             return True
     return False
 
+def pop_cache(read, cache, cache_keys):
+    ''' 
+        If read name is not in cache already, remove the first cache 
+        entry.
+    '''
+    if read.query_name not in cache_keys:
+        first = list(cache_keys)[0]
+        del cache[first]
+        del cache_keys[first]
+
 def filter_dups(bam, output=None, dup_bam=None, ref=None, buffer_size=500):
     for fn in (output, dup_bam):
         if fn is not None and os.path.exists(fn):
@@ -97,6 +107,7 @@ def filter_dups(bam, output=None, dup_bam=None, ref=None, buffer_size=500):
     prog_string = ''
     cache = defaultdict(list)
     cache_keys = OrderedDict()
+    buffer_full = False
     for read in bamfile.fetch(until_eof=True):
         n += 1
         dups = get_duplicates(read, cache)
@@ -108,12 +119,13 @@ def filter_dups(bam, output=None, dup_bam=None, ref=None, buffer_size=500):
                 dupfile.write(read)
         else:
             outfile.write(read)
+            if buffer_full:
+                pop_cache(read, cache, cache_keys)
+            elif len(cache_keys) >= buffer_size:
+                buffer_full = True
+                pop_cache(read, cache, cache_keys)
             cache[read.query_name].append(read)
             cache_keys[read.query_name] = None
-            if len(cache_keys) > buffer_size:
-                first = list(cache_keys)[0]
-                del cache[first]
-                del cache_keys[first]
         if not n % 10000:
             coord = get_coordinate(read)
             sys.stderr.write("\r" + " " * len(prog_string))
