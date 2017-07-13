@@ -47,7 +47,7 @@ coordinate in memory.''')
                                help=''' Reference fasta file. May be required   
                                         if using CRAM input.''')
     optional_args.add_argument('-w', '--window_size', metavar='DISTANCE',
-                               type=int, default=500, 
+                               type=int, default=100, 
                                help=''' Check for duplicate reads with aligned
                                         coordinates this far apart or closer. 
                                         For reads where both pairs are unmapped
@@ -55,8 +55,9 @@ coordinate in memory.''')
                                         number of reads to keep instead. This 
                                         is meant to allow for potential 
                                         adjustments in the aligned coordinate 
-                                        due to GATK indel realignment.
-                                        Default=500''')
+                                        due to GATK indel realignment while 
+                                        preserving memory usage.
+                                        Default=100''')
     optional_args.add_argument('-b', '--buffer_size', metavar='NUM_READS', 
                                type=int, default=100, 
                                help=''' Number of reads to store in memory to 
