@@ -171,10 +171,9 @@ def filter_dups(bam, output=None, dup_bam=None, ref=None, window_size=100,
             cache_keys[read.query_name] = None
         prev_read = read
         if not n % 10000:
-            coord = get_coordinate(read)
             sys.stderr.write("\r" + " " * len(prog_string))
             prog_string = ("{:,} read, {:,} duplicates identified".format(n, d)  
-                          + " at {}".format(coord))
+                          + " at {}".format(get_coordinate(read)))
             sys.stderr.write("\r" + prog_string)
     sys.stderr.write("\nFinished: {:,} alignments read, {:,} filtered\n"
                      .format(n, d))
