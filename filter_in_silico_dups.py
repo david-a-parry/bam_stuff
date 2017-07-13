@@ -40,26 +40,32 @@ coordinate in memory.''')
                                help=''' Write cleaned output BAM to this file. 
                                         Default is to write SAM format to 
                                         STDOUT''')
-    optional_args.add_argument('-d', '--dup_bam', metavar='DUPS.bam', 
+    optional_args.add_argument('-d', '--dup_bam', metavar='DUPS', 
                                help=''' Optional BAM file for duplicated reads.
                                ''')
     optional_args.add_argument('-r', '--ref', metavar='REF', 
-                               help=''' Reference fasta file. Required if using
-                                        CRAM input.''')
-    optional_args.add_argument('-b', '--buffer_size', metavar='NUM_READS', 
+                               help=''' Reference fasta file. May be required   
+                                        if using CRAM input.''')
+    optional_args.add_argument('-w', '--window_size', metavar='DISTANCE',
                                type=int, default=500, 
+                               help=''' Check for duplicate reads with aligned
+                                        coordinates this far apart or closer. 
+                                        For reads where both pairs are unmapped
+                                        --buffer_size is used to determine the
+                                        number of reads to keep instead. This 
+                                        is meant to allow for potential 
+                                        adjustments in the aligned coordinate 
+                                        due to GATK indel realignment.
+                                        Default=500''')
+    optional_args.add_argument('-b', '--buffer_size', metavar='NUM_READS', 
+                               type=int, default=100, 
                                help=''' Number of reads to store in memory to 
                                         check as duplicates against the current 
                                         read. Only the last N reads will be 
-                                        held for comparison. Too few may mean 
-                                        that duplicates are not detected while 
-                                        large number may result in slower 
-                                        runtime and greater memory usage. The 
-                                        ideal number will depend on depth of 
-                                        coverage (i.e. how many reads may 
-                                        have the same start coordinate), with 
-                                        the default setting being adequate for
-                                        30X coverage. Default=500.''')
+                                        held for comparison if the first and 
+                                        last span a greater distance than 
+                                        --window_size or else if processing
+                                        unmapped pairs. Default=100.''')
     return parser
     
 def get_duplicates(read, cache):
@@ -80,17 +86,48 @@ def is_dup(read, other):
             return True
     return False
 
-def pop_cache(read, cache, cache_keys):
-    ''' 
-        If read name is not in cache already, remove the first cache 
-        entry.
-    '''
-    if read.query_name not in cache_keys:
-        first = list(cache_keys)[0]
-        del cache[first]
-        del cache_keys[first]
+def check_sorted(read, prev, seen_contigs):
+    if prev is None:
+        return
+    if read.reference_id == prev.reference_id:
+        if read.reference_start < prev.reference_start:
+            sys.exit("ERROR: Unsorted positions: {} after {}"
+                     .format(get_coordinate(read), get_coordinate(prev)))
+    else:
+        if read.reference_id in seen_contigs:
+            sys.exit("ERROR: Unsorted positions: encountered contig " + 
+                     " {} before and after {}" 
+                     .format(get_rname(read), get_rname(prev)))
+        seen_contigs.add(get_rname(read))
 
-def filter_dups(bam, output=None, dup_bam=None, ref=None, buffer_size=500):
+def pop_cache(read, prev, window, size, cache, cache_keys):
+    ''' 
+        If we are at a new position and read name is not in cache 
+        already, remove the first N cache entries to reduce cache size
+        to buffer_size.
+    '''
+    to_remove = []
+    if (read.reference_start != prev.reference_start or
+        read.reference_id != prev.reference_id or read.reference_id == -1):
+        if read.query_name not in cache_keys:
+            r = len(cache_keys) - size
+            if r > 0:
+                ck = list(cache_keys)
+                check_window = False
+                if (read.reference_id == prev.reference_id and 
+                    read.reference_id != -1):
+                    #keep mapped reads close to each other
+                    check_window = True
+                    window_end = cache[ck[-1]][-1].reference_start
+                for k in ck[0:r]:
+                    if check_window:
+                        if window_end - cache[k][-1].reference_start < window:
+                            return
+                    del cache[k]
+                    del cache_keys[k]
+
+def filter_dups(bam, output=None, dup_bam=None, ref=None, window_size=100,
+                buffer_size=100):
     for fn in (output, dup_bam):
         if fn is not None and os.path.exists(fn):
             sys.exit("Output file '{}' exists - please delete or choose"
@@ -107,9 +144,12 @@ def filter_dups(bam, output=None, dup_bam=None, ref=None, buffer_size=500):
     prog_string = ''
     cache = defaultdict(list)
     cache_keys = OrderedDict()
+    contigs = set()
     buffer_full = False
+    prev_read = None
     for read in bamfile.fetch(until_eof=True):
         n += 1
+        check_sorted(read, prev_read, contigs)
         dups = get_duplicates(read, cache)
         if dups:
             d += 1
@@ -120,12 +160,15 @@ def filter_dups(bam, output=None, dup_bam=None, ref=None, buffer_size=500):
         else:
             outfile.write(read)
             if buffer_full:
-                pop_cache(read, cache, cache_keys)
+                pop_cache(read, prev_read, window_size, buffer_size, cache, 
+                          cache_keys)
             elif len(cache_keys) >= buffer_size:
                 buffer_full = True
-                pop_cache(read, cache, cache_keys)
+                pop_cache(read, prev_read, window_size, buffer_size, cache, 
+                          cache_keys)
             cache[read.query_name].append(read)
             cache_keys[read.query_name] = None
+        prev_read = read
         if not n % 10000:
             coord = get_coordinate(read)
             sys.stderr.write("\r" + " " * len(prog_string))
