@@ -4,7 +4,7 @@ import os
 import pysam
 from collections import defaultdict,OrderedDict
 import argparse
-from lib.read_stuff import get_coordinate
+from lib.read_stuff import get_coordinate, get_rname
 from lib.file_stuff import get_bamfile, get_output
 
 def get_parser():
@@ -120,10 +120,13 @@ def pop_cache(read, prev, window, size, cache, cache_keys):
                     #keep mapped reads close to each other
                     check_window = True
                     window_end = cache[ck[-1]][-1].reference_start
+                    window_ref_id = cache[ck[-1]][-1].reference_id
                 for k in ck[0:r]:
                     if check_window:
-                        if window_end - cache[k][-1].reference_start < window:
-                            return
+                        if (cache[k][-1].reference_id == window_ref_id and
+                           window_end - cache[k][-1].reference_start < window):
+                            #bail out if first read is within window bp of last
+                            break
                     del cache[k]
                     del cache_keys[k]
 
