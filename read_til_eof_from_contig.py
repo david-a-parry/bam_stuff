@@ -9,6 +9,7 @@ import argparse
 def get_parser():
     '''Get ArgumentParser'''
     parser = argparse.ArgumentParser(
+            usage='%(prog)s INPUT [options]',
             description=''' Read from a given contig to the end of an indexed
                             BAM/CRAM file, including unmapped reads.''',
             epilog='''  While samtools will extract all reads for a given
