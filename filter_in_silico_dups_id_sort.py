@@ -78,6 +78,8 @@ mapped mate has undergone indel realignment.''')
    # optional_args.add_argument('-r', '--ref', metavar='REF', 
    #                            help=''' Reference fasta file. May be required   
    #                                     if using CRAM input.''')
+    optional_args.add_argument('-f', '--force', action='store_true', 
+                               help=''' Overwite existing output files.''')
     return parser
     
 def is_dup(read, other):
@@ -252,9 +254,10 @@ def get_coordinate(rsum):
         pos = rsum.split[3]
     return "{}:{}".format(rsum.split[2], pos)
 
-def filter_dups(bam, output=None, dup_bam=None, ref=None, threads=0):
+def filter_dups(bam, output=None, dup_bam=None, ref=None, threads=0, 
+                force=False):
     for fn in (output, dup_bam):
-        if fn is not None and os.path.exists(fn):
+        if fn is not None and os.path.exists(fn) and not force:
             sys.exit("Output file '{}' exists - please delete or choose"
                      .format(fn) + " another name.")
     if output is None:
