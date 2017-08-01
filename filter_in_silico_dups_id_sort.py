@@ -26,8 +26,7 @@ class ReadSum(object):
         '''
         self.is_header = False
         self.read = bline
-        self.split = bline.split()
-        #self.split = bline.decode(sys.stdout.encoding).split()
+        self.split = bline.decode(sys.stdout.encoding).split()
         if self.split[0][0] == '@': #header
             self.is_header = True
             self.flag = None
