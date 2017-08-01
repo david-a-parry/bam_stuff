@@ -9,7 +9,7 @@ from lib.file_stuff import get_bamfile, get_output, seek_back_til_reads
 def get_parser():
     '''Get ArgumentParser'''
     parser = argparse.ArgumentParser(
-       #formatter_class=argparse.RawTextHelpFormatter,
+        usage='%(prog)s INPUT [options]',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=''' 
 Extract unmapped reads from the end of a BAM file.''',
@@ -30,14 +30,12 @@ simply using samtools (for example: samtools -f 4 input.bam).
     required_args.add_argument('bam', metavar='IN', 
                                help='''Input BAM filename''')
     optional_args.add_argument('-o', '--output', metavar='OUT', 
-                               help=
-'''Write cleaned output BAM to this file. Default
-behaviour is to write SAM format to STDOUT.
-
-''')
+                               help=''' Write unmapped reads to this file. 
+                                        Default behaviour is to write SAM 
+                                        format to STDOUT.''')
     optional_args.add_argument('-r', '--ref', metavar='REF', 
-                               help=
-'''Reference fasta file. Required if using CRAM input.''')
+                               help=''' Reference fasta file. Required if using 
+                                        CRAM input.''')
     return parser
 
 def extract(bam, output=None, ref=None):
