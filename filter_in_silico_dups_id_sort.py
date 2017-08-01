@@ -59,25 +59,23 @@ Note, that for primary alignments, we cannnot consider unmapped reads with
 different POS values as necessarily distinct as this value may change if the
 mapped mate has undergone indel realignment.''')
 
-    required_args = parser.add_argument_group('Required Arguments')
-    optional_args = parser.add_argument_group('Optional Arguments')
-    required_args.add_argument('bam', metavar='INPUT', 
+    parser.add_argument('bam', metavar='INPUT', 
                                help=''' Input BAM filename''')
-    optional_args.add_argument('-o', '--output', metavar='OUT', 
+    parser.add_argument('-o', '--output', metavar='OUT', 
                                help=''' Write cleaned output BAM to this file. 
                                         Default is to write SAM format to 
                                         STDOUT''')
-    optional_args.add_argument('-d', '--dup_bam', metavar='DUPS', 
+    parser.add_argument('-d', '--dup_bam', metavar='DUPS', 
                                help=''' Optional BAM file for duplicated reads.
                                ''')
-    optional_args.add_argument('-t', '--threads', metavar='THREADS', default=0,
+    parser.add_argument('-t', '--threads', metavar='THREADS', default=0,
                                type=int,
                                help=''' Number of additional threads to use 
                                         with samtools sort. ''')
-   # optional_args.add_argument('-r', '--ref', metavar='REF', 
+   # parser.add_argument('-r', '--ref', metavar='REF', 
    #                            help=''' Reference fasta file. May be required   
    #                                     if using CRAM input.''')
-    optional_args.add_argument('-f', '--force', action='store_true', 
+    parser.add_argument('-f', '--force', action='store_true', 
                                help=''' Overwite existing output files.''')
     return parser
     

@@ -32,21 +32,19 @@ mapped mate has undergone indel realignment. This means an arbitrary sized read
 buffer is necessary rather than just retaining reads mapped to the same
 coordinate in memory.''')
 
-    required_args = parser.add_argument_group('Required Arguments')
-    optional_args = parser.add_argument_group('Optional Arguments')
-    required_args.add_argument('bam', metavar='INPUT', 
+    parser.add_argument('bam', metavar='INPUT', 
                                help=''' Input BAM filename''')
-    optional_args.add_argument('-o', '--output', metavar='OUT', 
+    parser.add_argument('-o', '--output', metavar='OUT', 
                                help=''' Write cleaned output BAM to this file. 
                                         Default is to write SAM format to 
                                         STDOUT''')
-    optional_args.add_argument('-d', '--dup_bam', metavar='DUPS', 
+    parser.add_argument('-d', '--dup_bam', metavar='DUPS', 
                                help=''' Optional BAM file for duplicated reads.
                                ''')
-    optional_args.add_argument('-r', '--ref', metavar='REF', 
+    parser.add_argument('-r', '--ref', metavar='REF', 
                                help=''' Reference fasta file. May be required   
                                         if using CRAM input.''')
-    optional_args.add_argument('-w', '--window_size', metavar='DISTANCE',
+    parser.add_argument('-w', '--window_size', metavar='DISTANCE',
                                type=int, default=100, 
                                help=''' Check for duplicate reads with aligned
                                         coordinates this far apart or closer. 
@@ -58,7 +56,7 @@ coordinate in memory.''')
                                         due to GATK indel realignment while 
                                         preserving memory usage.
                                         Default=100''')
-    optional_args.add_argument('-b', '--buffer_size', metavar='NUM_READS', 
+    parser.add_argument('-b', '--buffer_size', metavar='NUM_READS', 
                                type=int, default=100, 
                                help=''' Number of reads to store in memory to 
                                         check as duplicates against the current 
@@ -67,7 +65,7 @@ coordinate in memory.''')
                                         last span a greater distance than 
                                         --window_size or else if processing
                                         unmapped pairs. Default=100.''')
-    optional_args.add_argument('-f', '--force', action='store_true', 
+    parser.add_argument('-f', '--force', action='store_true', 
                                help=''' Overwite existing output files.''')
     return parser
     
