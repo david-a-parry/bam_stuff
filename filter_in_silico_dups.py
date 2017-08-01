@@ -67,6 +67,8 @@ coordinate in memory.''')
                                         last span a greater distance than 
                                         --window_size or else if processing
                                         unmapped pairs. Default=100.''')
+    optional_args.add_argument('-f', '--force', action='store_true', 
+                               help=''' Overwite existing output files.''')
     return parser
     
 def get_duplicates(read, cache):
@@ -131,9 +133,9 @@ def pop_cache(read, prev, window, size, cache, cache_keys):
                     del cache_keys[k]
 
 def filter_dups(bam, output=None, dup_bam=None, ref=None, window_size=100,
-                buffer_size=100):
+                buffer_size=100, force=False):
     for fn in (output, dup_bam):
-        if fn is not None and os.path.exists(fn):
+        if fn is not None and os.path.exists(fn) and not force:
             sys.exit("Output file '{}' exists - please delete or choose"
                      .format(fn) + " another name.")
     if buffer_size < 1:
