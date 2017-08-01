@@ -9,7 +9,8 @@ from lib.file_stuff import get_bamfile, get_output, seek_back_til_reads
 def get_parser():
     '''Get ArgumentParser'''
     parser = argparse.ArgumentParser(
-       formatter_class=argparse.RawTextHelpFormatter,
+       #formatter_class=argparse.RawTextHelpFormatter,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
         description=''' 
 Extract unmapped reads from the end of a BAM file.''',
         epilog='''  
