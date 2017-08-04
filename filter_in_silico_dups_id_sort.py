@@ -217,7 +217,7 @@ def get_dup_reads(reads):
             if is_dup:
                 break
         if not is_dup:
-            non_dups.append(iread)
+            non_dups.append(reads[i])
     return dup_sets, non_dups
 
 def choose_best_dup(dups):
