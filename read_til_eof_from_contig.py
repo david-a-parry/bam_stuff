@@ -23,18 +23,16 @@ def get_parser():
                         If you are ONLY interested in unmapped reads, see
                         the extract_unmapped_pairs.py script instead.''')
 
-    required_args = parser.add_argument_group('Required Arguments')
-    optional_args = parser.add_argument_group('Optional Arguments')
-    required_args.add_argument('bam', metavar='BAM', 
+    parser.add_argument('bam', metavar='BAM', 
                                help=''' Input BAM filename''')
-    required_args.add_argument('contig', metavar='CONTIG', 
+    parser.add_argument('contig', metavar='CONTIG', 
                                help=''' Name of contig to start retrieving 
                                         reads from''')
-    optional_args.add_argument('-o', '--output', metavar='OUT', 
+    parser.add_argument('-o', '--output', metavar='OUT', 
                                help=''' Write output to this file. Default 
                                         behaviour is to write SAM format to 
                                         STDOUT.''')
-    optional_args.add_argument('-r', '--ref', metavar='REF', 
+    parser.add_argument('-r', '--ref', metavar='REF', 
                                help=''' Reference fasta file. Required if using 
                                         CRAM input.''')
     return parser

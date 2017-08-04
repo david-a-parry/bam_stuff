@@ -25,15 +25,13 @@ unmapped reads where the mate is mapped. That can instead be acheived
 simply using samtools (for example: samtools -f 4 input.bam).
 
 ''' )
-    required_args = parser.add_argument_group('Required Arguments')
-    optional_args = parser.add_argument_group('Optional Arguments')
-    required_args.add_argument('bam', metavar='IN', 
+    parser.add_argument('bam', metavar='IN', 
                                help='''Input BAM filename''')
-    optional_args.add_argument('-o', '--output', metavar='OUT', 
+    parser.add_argument('-o', '--output', metavar='OUT', 
                                help=''' Write unmapped reads to this file. 
                                         Default behaviour is to write SAM 
                                         format to STDOUT.''')
-    optional_args.add_argument('-r', '--ref', metavar='REF', 
+    parser.add_argument('-r', '--ref', metavar='REF', 
                                help=''' Reference fasta file. Required if using 
                                         CRAM input.''')
     return parser
