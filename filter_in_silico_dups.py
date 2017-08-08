@@ -45,7 +45,7 @@ coordinate in memory.''')
                                help=''' Reference fasta file. May be required   
                                         if using CRAM input.''')
     parser.add_argument('-w', '--window_size', metavar='DISTANCE',
-                               type=int, default=100, 
+                               type=int, default=200, 
                                help=''' Check for duplicate reads with aligned
                                         coordinates this far apart or closer. 
                                         For reads where both pairs are unmapped
@@ -55,16 +55,16 @@ coordinate in memory.''')
                                         adjustments in the aligned coordinate 
                                         due to GATK indel realignment while 
                                         preserving memory usage.
-                                        Default=100''')
+                                        Default=200''')
     parser.add_argument('-b', '--buffer_size', metavar='NUM_READS', 
-                               type=int, default=100, 
+                               type=int, default=500, 
                                help=''' Number of reads to store in memory to 
                                         check as duplicates against the current 
                                         read. Only the last N reads will be 
                                         held for comparison if the first and 
                                         last span a greater distance than 
                                         --window_size or else if processing
-                                        unmapped pairs. Default=100.''')
+                                        unmapped pairs. Default=500.''')
     parser.add_argument('-f', '--force', action='store_true', 
                                help=''' Overwite existing output files.''')
     return parser
@@ -130,8 +130,8 @@ def pop_cache(read, prev, window, size, cache, cache_keys):
                     del cache[k]
                     del cache_keys[k]
 
-def filter_dups(bam, output=None, dup_bam=None, ref=None, window_size=100,
-                buffer_size=100, force=False):
+def filter_dups(bam, output=None, dup_bam=None, ref=None, window_size=200,
+                buffer_size=500, force=False):
     for fn in (output, dup_bam):
         if fn is not None and os.path.exists(fn) and not force:
             sys.exit("Output file '{}' exists - please delete or choose"
