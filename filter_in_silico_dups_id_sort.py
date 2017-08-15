@@ -5,36 +5,8 @@ from subprocess import PIPE, Popen
 import argparse
 from collections import defaultdict
 import re
-
-oc_re = re.compile(r'OC:Z:(\S+)')
-bi_re = re.compile(r'BI:Z:(\S+)')
-bd_re = re.compile(r'BD:Z:(\S+)')
-
-class ReadSum(object):
-    ''' 
-        Class for storing variables for SAM records for convenience
-        and readability. Simply stores the binary read, a list of 
-        each SAM column as strings, and the bitwise flag as an int.
-    '''
-
-    __slots__ = ['rid', 'read', 'split', 'flag', 'is_header']
-
-    def __init__(self, bline):
-        '''
-            Requires single line of SAM from samtools piped process as 
-            bytes
-        '''
-        self.is_header = False
-        self.read = bline
-        self.split = bline.decode(sys.stdout.encoding).split()
-        if self.split[0][0] == '@': #header
-            self.is_header = True
-            self.flag = None
-            self.rid = None
-        else:
-            self.flag = int(self.split[1])
-            self.rid = self.split[0]
-        
+from lib.read_stuff import get_coordinate, get_rname
+from lib.file_stuff import get_bamfile, get_output
 
 def get_parser():
     '''Get ArgumentParser'''
@@ -60,18 +32,15 @@ different POS values as necessarily distinct as this value may change if the
 mapped mate has undergone indel realignment.''')
 
     parser.add_argument('bam', metavar='INPUT', 
-                               help=''' Input BAM filename''')
-    parser.add_argument('-o', '--output', metavar='OUT', 
+                               help=''' Input BAM filename. Input MUST be 
+                                        sorted by read name.''')
+    parser.add_argument('-o', '--output', metavar='OUT', required=True,
                                help=''' Write cleaned output BAM to this file. 
                                         Default is to write SAM format to 
                                         STDOUT''')
     parser.add_argument('-d', '--dup_bam', metavar='DUPS', 
                                help=''' Optional BAM file for duplicated reads.
                                ''')
-    parser.add_argument('-t', '--threads', metavar='THREADS', default=0,
-                               type=int,
-                               help=''' Number of additional threads to use 
-                                        with samtools sort. ''')
    # parser.add_argument('-r', '--ref', metavar='REF', 
    #                            help=''' Reference fasta file. May be required   
    #                                     if using CRAM input.''')
@@ -90,11 +59,10 @@ def is_dup(read, other):
 
 def check_dups(cache):
     '''
-        Identify duplicate reads in cache or ReadSummary objects. 
+        Identify duplicate reads in cache. 
 
-        Returns two lists of binary representations of reads. The first
-        is a list of non-duplicated reads, the second is a list of 
-        filtered duplicates.
+        Returns two lists of reads. The first is a list of non-duplicated reads,
+        the second is a list of filtered duplicates.
     '''
     non_dups = []
     dups = []
@@ -103,16 +71,15 @@ def check_dups(cache):
     singletons = []
     ndups = 0
     for r in cache:
-        if r.flag & 1: #paired
-            if r.flag & 64:       #read1
+        if r.is_paired:
+            if r.is_read1:       #read1
                 read1s.append(r)
-            elif r.flag & 128:    #read2
+            elif r.is_read2:    #read2
                 read2s.append(r)
             else:
                 sys.exit("ERROR: Malformed BAM - read is paired but " + 
                          "is neither set as first or second in pair for " +
-                         "read {}".format(read.decode(sys.stdout.encoding))
-                        )
+                         "read {}".format(read.tostring(bamfile)))
         else:
             singletons.append(r)
     if singletons:
@@ -122,10 +89,10 @@ def check_dups(cache):
     if psupp:
         ndups += add_non_dups_and_dups(psupp, non_dups, dups)
     if len(r1s) > 1:
-        dups.extend(list(x.read for x in r1s))
+        dups.extend(r1s)
         ndups += 1
     if len(r2s) > 1:
-        dups.extend(list(x.read for x in r2s))
+        dups.extend(r2s)
         ndups += 1
     if len(r1s) > 0 and len(r2s) > 0:
         non_dups.extend(get_non_dup_pair(r1s, r2s))
@@ -138,7 +105,7 @@ def check_dups(cache):
 
 def get_non_dup_pair(r1s, r2s):
     if len(r1s) == 1 and len(r2s) == 1:
-        return (r1s[0].read, r2s[0].read)
+        return (r1s[0], r2s[0])
     pairs = []
     for r1 in r1s:
         for r2 in r2s:
@@ -146,31 +113,32 @@ def get_non_dup_pair(r1s, r2s):
                 r2.flag & 4 and not r1.flag & 4):   # - expect same coordinate,
                 #coords may differ if mapped read underwent indel realignment
                 #and unmapped read originated from before indel realignment
-                if r1.split[3] == r2.split[3] and r1.split[2] == r2.split[2]:
+                if (r1.reference_start == r2.reference_start and 
+                    r1.reference_id == r2.reference_id):
                     pairs.append((r1, r2))
             elif not r1.flag & 4 and not r2.flag & 4: #both mapped 
                 #check mate coords match
-                if (r1.split[3] == r2.split[7] and 
-                    (r1.split[2] == r2.split[6] or r2.split[6] == '=')):
+                if (r1.reference_start == r2.next_reference_start and 
+                    r1.reference_id == r2.next_reference_id):
                     pairs.append((r1, r2))
             else:#both unmapped
                 pairs.append((r1, r2))
     best_pair = None
     for p in pairs:
         if has_recal_tag(p[0]) and has_recal_tag(p[1]):
-            best_pair = (p[0].read, p[1].read)
+            best_pair = (p[0], p[1])
             break
         elif has_oc_tag(p[0]) or has_oc_tag(p[1]):
-            best_pair = (p[0].read, p[1].read)
+            best_pair = (p[0], p[1])
     if best_pair is None and pairs:
-        best_pair = (pairs[0][0].read, paris[0][1].read)
+        best_pair = (pairs[0][0], paris[0][1])
     return best_pair
 
 def add_non_dups_and_dups(reads, non_dups, dups):
     sdups,snon_dups = get_dup_reads(reads)
     non_dups.extend(snon_dups)
     if sdups:
-        non_dups.extend(choose_best_dups(sdups))
+        non_dups.extend(choose_best_dup(sdups))
         dups.extend(sdups)
     return len(sdups)
 
@@ -204,8 +172,11 @@ def get_dup_reads(reads):
         for j in range(len(reads)):
             if i == j: continue
             if reads[i].flag == reads[j].flag:
-                if reads[i].flag & 256 or reads[i].flag & 2048: #not primary/supplementary 
-                    if isplit[2] == jsplit[2] and isplit[3] == jsplit[3]:
+                if reads[i].flag & 256 or reads[i].flag & 2048: 
+                    #not primary/supplementary 
+                    if (reads[i].reference_id == reads[j].reference_id and 
+                        reads[i].reference_start == reads[j].reference_start):
+                        #same coord
                         is_dup = True
                         dup_sets[reads[i].flag].append(reads[i])
                 else:       
@@ -220,29 +191,26 @@ def get_dup_reads(reads):
 def choose_best_dup(dups):
     best_dups = []
     for k,v in dups.items(): #key is bitwise flag
-        best_dups.append(choose_best_read(read))
+        best_dups.append(choose_best_read(v))
+    return best_dups
 
 def choose_best_read(reads):
     best = None
     for r in reads:
         if has_recal_tag(r):
-            best = r.read
+            best = r
             break
         if has_oc_tag(r):
-            best = r.read
+            best = r
     if best is None:
-        best = reads[0].read
+        best = reads[0]
     return best
 
 def has_recal_tag(read):
-    for tag in read.split[11:]:
-        if bi_re.match(tag) or bd_re.match(tag):
-            return True
+    return (read.has_tag('BD') or read.has_tag('BI'))
     
 def has_oc_tag(read):
-    for tag in read.split[11:]:
-        if oc_re.match(tag):
-            return True
+    return read.has_tag('OC') 
 
 def get_coordinate(rsum):
     try:
@@ -251,65 +219,66 @@ def get_coordinate(rsum):
         pos = rsum.split[3]
     return "{}:{}".format(rsum.split[2], pos)
 
-def filter_dups(bam, output=None, dup_bam=None, ref=None, threads=0, 
-                force=False):
+def check_header(bamfile):
+    header = bamfile.header
+    if 'HD' in header:
+        if 'SO' in header['HD']:
+            if header['HD']['SO'] != 'queryname':
+                sys.stderr.write("WARNING: Input does not appear to be sorted"+
+                                 " by read name. Header sort order was '{}'\n"
+                                  .format(header['HD']['SO']) )
+            return
+    sys.stderr.write('WARNING: Could not confirm sort order from input header.')
+
+def filter_dups(bam, output, dup_bam=None, ref=None, force=False):
     for fn in (output, dup_bam):
         if fn is not None and os.path.exists(fn) and not force:
             sys.exit("Output file '{}' exists - please delete or choose"
                      .format(fn) + " another name.")
-    if output is None:
-        output = sys.stdout
-    outfile = open(output, 'wb')
+    bamfile = get_bamfile(bam)
+    outfile = get_output(output, bamfile) 
     dupfile = None
-    dupwrite = None
-    dash = '-' #subprocess doesn't seem to like '-' passed as a string
-    samwrite = Popen(["samtools", 'view', '-Sbh', dash], stdout=outfile, 
-                     stdin=PIPE, bufsize=-1)
     if dup_bam is not None:
-        dupfile = open(dup_bam, 'wb')
-        dupwrite = Popen(["samtools", 'view', '-Sbh', dash], stdout=dupfile,
-                         stdin=PIPE, bufsize=-1)
+        dupfile = get_output(dup_bam, bamfile)
     n = 0
     d = 0
     f = 0
     prev_id = None
     prog_string = ''
     cache = []
-    sys.stderr.write("Sorting input file by read ID... This may take some " + 
-                     "time...\n")
-    samsort = Popen(["samtools", 'sort', '-@', str(threads), '-n', '-O', 'SAM', 
-                     bam], 
-                    stdout=PIPE, bufsize=-1)
-    for line in samsort.stdout:
-        rsum = ReadSum(line)
-        if rsum.is_header:
-            samwrite.stdin.write(rsum.read)
-            if dupwrite is not None:
-                dupwrite.stdin.write(rsum.read)
-            continue
+    check_header(bamfile)
+    for read in bamfile.fetch(until_eof=True):
         n += 1
-        if prev_id != rsum.rid and prev_id is not None:
+        if prev_id != read.query_name and prev_id is not None:
             valid, dups, ndup = check_dups(cache)
             d += ndup
             f += len(cache) - len(valid)
             for v in valid:
-                samwrite.stdin.write(v)
-            if dupwrite is not None:
+                outfile.write(v)
+            if dupfile is not None:
                 for dp in dups:
-                    dupwrite.stdin.write(dp)
+                    dupfile.write(dp)
             cache[:] = []
-        cache.append(rsum)
-        prev_id = rsum.rid
+        cache.append(read)
+        prev_id = read.query_name
         if not n % 10000:
             sys.stderr.write("\r" + " " * len(prog_string))
             prog_string = ("{:,} read, {:,} duplicates, {:,} reads filtered "
                            .format(n, d, f)
                           )
             sys.stderr.write("\r" + prog_string)
+    valid, dups, ndup = check_dups(cache)
+    d += ndup
+    f += len(cache) - len(valid)
+    for v in valid:
+        outfile.write(v)
+    if dupfile is not None:
+        for dp in dups:
+            dupfile.write(dp)
+    cache[:] = []
     sys.stderr.write("\nFinished: {:,} alignments read, {:,} reads duplicated," 
                      .format(n, d) + " {:,} reads filtered\n".format(f))
-    if output is not None:
-        outfile.close()
+    outfile.close()
     if dupfile is not None:
         dupfile.close()
 
